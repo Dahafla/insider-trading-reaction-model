@@ -5,4 +5,4 @@ yfinance
 psycopg2-binary
 streamlit
 matplotlib
-  
+openpyxl

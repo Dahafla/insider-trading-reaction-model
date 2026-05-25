@@ -1,6 +1,8 @@
 # src/run_analysis.py
 
 import os
+from datetime import datetime
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -17,7 +19,9 @@ START = "2024-01-01"
 END = "2025-01-01"
 QUANTILE = 0.75
 HORIZON = 10
-OUTPUT_DIR = "charts"
+OUTPUT_DIR = "output"
+EXCEL_FILENAME = "insider_analysis.xlsx"
+GENERATE_CHARTS = False
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
@@ -102,6 +106,88 @@ def plot_equity_curve(results: pd.DataFrame, horizon: int, output_path: str):
     plt.close(fig)
 
 
+def _format_events_sheet(results: pd.DataFrame, horizon: int) -> pd.DataFrame:
+    """Prepare trade-level rows for Excel with readable columns."""
+    col = f"ret_{horizon}d"
+    df = results.copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    if col in df.columns:
+        df[f"{horizon}d_return_pct"] = (df[col] * 100).round(4)
+    column_order = [
+        "ticker",
+        "company_name",
+        "trade_date",
+        "insider_name",
+        "insider_role",
+        "shares",
+        "price",
+        "value_usd",
+        "size_bucket",
+        col,
+        f"{horizon}d_return_pct",
+    ]
+    existing = [c for c in column_order if c in df.columns]
+    extra = [c for c in df.columns if c not in existing]
+    return df[existing + extra]
+
+
+def _stats_to_frame(stats: dict) -> pd.DataFrame:
+    return pd.DataFrame(
+        [{"metric": k, "value": v} for k, v in stats.items()]
+    )
+
+
+def _parameters_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {"parameter": "min_value_usd", "value": MIN_VALUE},
+            {"parameter": "start_date", "value": START},
+            {"parameter": "end_date", "value": END},
+            {"parameter": "large_buy_quantile", "value": QUANTILE},
+            {"parameter": "forward_horizon_days", "value": HORIZON},
+            {"parameter": "generated_at", "value": datetime.now().isoformat(timespec="seconds")},
+        ]
+    )
+
+
+def export_to_excel(
+    results: pd.DataFrame,
+    summary: pd.DataFrame,
+    stats: dict,
+    horizon: int,
+    output_path: str,
+) -> str:
+    """
+    Write the full analysis to a multi-sheet Excel workbook.
+    """
+    events = _format_events_sheet(results, horizon)
+    stats_df = _stats_to_frame(stats)
+    params_df = _parameters_frame()
+
+    summary_out = summary.copy()
+    if "mean" in summary_out.columns:
+        summary_out["mean_return_pct"] = (summary_out["mean"] * 100).round(4)
+    if "median" in summary_out.columns:
+        summary_out["median_return_pct"] = (summary_out["median"] * 100).round(4)
+
+    equity = equity_by_calendar(results, horizon)
+    equity_df = equity.reset_index()
+    if len(equity_df.columns) == 2:
+        equity_df.columns = ["date", "cumulative_return"]
+    if not equity.empty:
+        stats = {**stats, "max_drawdown": max_drawdown(equity)}
+        stats_df = _stats_to_frame(stats)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        events.to_excel(writer, sheet_name="Events", index=False)
+        summary_out.to_excel(writer, sheet_name="Summary", index=False)
+        stats_df.to_excel(writer, sheet_name="Strategy Stats", index=False)
+        equity_df.to_excel(writer, sheet_name="Calendar Equity", index=False)
+        params_df.to_excel(writer, sheet_name="Parameters", index=False)
+
+    return output_path
+
+
 def plot_return_distribution(results: pd.DataFrame, horizon: int, output_path: str):
     col = f"ret_{horizon}d"
     rets = results[col].dropna()
@@ -161,16 +247,17 @@ def main():
     for k, v in stats.items():
         print(f"{k}: {v}")
 
-    # Plots
-    plot_bucket_bar(summary, HORIZON, f"{OUTPUT_DIR}/large_vs_normal.png")
-    plot_equity_curve(results, HORIZON, f"{OUTPUT_DIR}/equity_curve.png")
-    plot_return_distribution(results, HORIZON, f"{OUTPUT_DIR}/return_dist.png")
+    excel_path = os.path.join(OUTPUT_DIR, EXCEL_FILENAME)
+    export_to_excel(results, summary, stats, HORIZON, excel_path)
+    print(f"\nExcel report saved: {excel_path}")
 
-    # Save raw data too
-    results.to_csv(f"{OUTPUT_DIR}/results.csv", index=False)
-    summary.to_csv(f"{OUTPUT_DIR}/summary.csv", index=False)
-
-    print("\nCharts and CSVs saved in:", OUTPUT_DIR)
+    if GENERATE_CHARTS:
+        charts_dir = os.path.join(OUTPUT_DIR, "charts")
+        os.makedirs(charts_dir, exist_ok=True)
+        plot_bucket_bar(summary, HORIZON, f"{charts_dir}/large_vs_normal.png")
+        plot_equity_curve(results, HORIZON, f"{charts_dir}/equity_curve.png")
+        plot_return_distribution(results, HORIZON, f"{charts_dir}/return_dist.png")
+        print("Charts saved in:", charts_dir)
 
 
 if __name__ == "__main__":

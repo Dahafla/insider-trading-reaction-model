@@ -43,6 +43,7 @@ def load_insider_buys(
           AND trade_date >= %s
           AND trade_date < %s
     """
+    
 
     params = (min_value_usd, start_date, end_date)
 
@@ -76,7 +77,9 @@ def tag_large_buys(df: pd.DataFrame, quantile: float = 0.75) -> pd.DataFrame:
         )
         return g
 
-    return df.groupby("ticker", group_keys=False).apply(bucket_group)
+    return df.groupby("ticker", group_keys=False).apply(
+        bucket_group, include_groups=False
+    )
 
 
 # ----------------------------------------------------
