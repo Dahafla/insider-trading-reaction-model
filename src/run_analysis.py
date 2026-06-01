@@ -131,12 +131,6 @@ def _format_events_sheet(results: pd.DataFrame, horizon: int) -> pd.DataFrame:
     return df[existing + extra]
 
 
-def _stats_to_frame(stats: dict) -> pd.DataFrame:
-    return pd.DataFrame(
-        [{"metric": k, "value": v} for k, v in stats.items()]
-    )
-
-
 def _parameters_frame() -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -161,7 +155,6 @@ def export_to_excel(
     Write the full analysis to a multi-sheet Excel workbook.
     """
     events = _format_events_sheet(results, horizon)
-    stats_df = _stats_to_frame(stats)
     params_df = _parameters_frame()
 
     summary_out = summary.copy()
@@ -176,12 +169,10 @@ def export_to_excel(
         equity_df.columns = ["date", "cumulative_return"]
     if not equity.empty:
         stats = {**stats, "max_drawdown": max_drawdown(equity)}
-        stats_df = _stats_to_frame(stats)
 
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         events.to_excel(writer, sheet_name="Events", index=False)
         summary_out.to_excel(writer, sheet_name="Summary", index=False)
-        stats_df.to_excel(writer, sheet_name="Strategy Stats", index=False)
         equity_df.to_excel(writer, sheet_name="Calendar Equity", index=False)
         params_df.to_excel(writer, sheet_name="Parameters", index=False)
 

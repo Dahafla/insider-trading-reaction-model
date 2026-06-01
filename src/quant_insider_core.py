@@ -43,7 +43,7 @@ def load_insider_buys(
           AND trade_date >= %s
           AND trade_date < %s
     """
-    
+
 
     params = (min_value_usd, start_date, end_date)
 
@@ -69,17 +69,14 @@ def tag_large_buys(df: pd.DataFrame, quantile: float = 0.75) -> pd.DataFrame:
         df["size_bucket"] = []
         return df
 
-    def bucket_group(g: pd.DataFrame) -> pd.DataFrame:
-        g = g.copy()
-        threshold = g["value_usd"].quantile(quantile)
-        g["size_bucket"] = (g["value_usd"] >= threshold).map(
-            {True: "large_buy", False: "normal_buy"}
-        )
-        return g
-
-    return df.groupby("ticker", group_keys=False).apply(
-        bucket_group, include_groups=False
+    df = df.copy()
+    threshold = df.groupby("ticker")["value_usd"].transform(
+        lambda s: s.quantile(quantile)
     )
+    df["size_bucket"] = (df["value_usd"] >= threshold).map(
+        {True: "large_buy", False: "normal_buy"}
+    )
+    return df
 
 
 # ----------------------------------------------------
@@ -220,9 +217,6 @@ def summarize_returns(df: pd.DataFrame, horizon: int = 10):
     )
 
     rets = df[col]
-    equity_curve = (1 + rets).cumprod()
-
-    total_return = float(equity_curve.iloc[-1] - 1.0)
     avg_trade = float(rets.mean())
     hit_rate = float((rets > 0).mean())
     sharpe = float(
@@ -231,7 +225,6 @@ def summarize_returns(df: pd.DataFrame, horizon: int = 10):
 
     stats = {
         "num_trades": len(rets),
-        "total_return": total_return,
         "avg_trade_return": avg_trade,
         "hit_rate": hit_rate,
         "approx_annualized_sharpe": sharpe,

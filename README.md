@@ -134,8 +134,9 @@ This writes **`output/insider_analysis.xlsx`** with sheets:
 |-------|----------|
 | **Events** | Every insider buy with 10-day forward return |
 | **Summary** | Mean/median returns by large vs normal buy |
-| **Strategy Stats** | Hit rate, Sharpe, total return, max drawdown |
 | **Calendar Equity** | Daily compounded calendar-time curve |
 | **Parameters** | Run settings (dates, min value, horizon) |
+
+Build a presentation **Dashboard** tab manually in Excel from these sheets if desired.
 
 Set `GENERATE_CHARTS = True` in `run_analysis.py` to also save PNGs under `output/charts/`.
