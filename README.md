@@ -12,6 +12,14 @@ Rather than treating all insider transactions equally, the system differentiates
 
 The goal is to assess whether insider buying behavior contains **incremental predictive information**, and how such signals behave when aggregated into a systematic trading framework.
 
+# Primary Deliverable — Excel Dashboard
+The main output is **output/insider_analysis.xlsx**, a multi-sheet workbook with an integrated chart dashboard providing a full view of the analysis results.
+Sheet Contents:
+- Dashboard: Visualizing return distributions, equity curve, large vs. normal buy comparisons
+- Events: Every insider buy with 10-day forward return
+- Summary: Mean/median returns by large vs. normal buy
+- Calendar Equity: Daily compounded calendar-time curveParametersRun settings (dates, min value, horizon)
+
 # Methodology
 
 The analysis follows a standard quant research pipeline:
@@ -50,7 +58,7 @@ The analysis follows a standard quant research pipeline:
 
 ## 1. Large vs Normal Insider Buys — Mean 10-Day Forward Returns
 
-![Daily SLeep Index](charts/large_vs_normal.png)
+![Large Vs. Normal Insider Buys](charts/large_vs_normal.png)
 Large Vs. Normal Insider Buys
 
 **Interpretation:**
